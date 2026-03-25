@@ -2,7 +2,6 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from matplotlib.animation import FuncAnimation
 
 # ------------------------------
@@ -12,14 +11,11 @@ file_path = r"C:\Users\35336\Desktop\Data1.xlsx"
 data = pd.read_excel(file_path, sheet_name="data", header=0)
 
 # 只使用 CH1~CH12
-used_ch = [f"CH{i}" for i in range(1,13)]
+used_ch = [f"CH{i}" for i in range(1, 13)]
 data = data[used_ch]
 
-# 取前 1000 行测试动画
-data_sample = data.iloc[:1000, :]
-
 # ------------------------------
-# 2️⃣ 矩阵布局
+# 2️⃣ 矩阵布局（3x5 前额叶）
 # ------------------------------
 matrix_layout = np.array([
     ["CH6",  "CH5", "CH4", "CH3", "CH2"],
@@ -28,7 +24,7 @@ matrix_layout = np.array([
 ], dtype=object)
 
 # ------------------------------
-# 3️⃣ 映射函数
+# 3️⃣ 映射函数：一行数据 → 矩阵
 # ------------------------------
 def get_signal_matrix(ch_row):
     ch_values = {ch: float(val) for ch, val in zip(used_ch, ch_row.values)}
@@ -36,30 +32,43 @@ def get_signal_matrix(ch_row):
     return sig_matrix
 
 # ------------------------------
-# 4️⃣ 设置动画
+# 4️⃣ 准备数据（测试动画可取前1000行）
 # ------------------------------
-fig, ax = plt.subplots(figsize=(6,3))
-sns.set_style("white")
+data_sample = data.iloc[:1000, :]  # 动画测试可改成全部数据 data
 
-# 初始热图（第一帧）
-sig_matrix = get_signal_matrix(data_sample.iloc[0])
-heatmap = sns.heatmap(sig_matrix, annot=False, fmt=".2f", cmap="coolwarm",
-                      cbar=True, linewidths=0.5, ax=ax, vmin=data_sample.min().min(), vmax=data_sample.max().max())
-plt.title("fNIRS Dynamic Heatmap")
+# 计算全局最小最大值，用于颜色映射
+global_min = data_sample.min().min()
+global_max = data_sample.max().max()
+
+# ------------------------------
+# 5️⃣ 设置动画
+# ------------------------------
+fig, ax = plt.subplots(figsize=(6, 3))
+
+# 初始化热力图
+init_matrix = get_signal_matrix(data_sample.iloc[0])
+im = ax.imshow(init_matrix, cmap="coolwarm", vmin=global_min, vmax=global_max)
+
+# 添加 colorbar
+cbar = plt.colorbar(im, ax=ax)
+cbar.set_label("Signal Value")
+
+# 添加标题
+ax.set_title("fNIRS Dynamic Heatmap")
+ax.set_xticks([])
+ax.set_yticks([])
 
 # 更新函数
 def update(frame):
-    ax.clear()
     sig_matrix = get_signal_matrix(data_sample.iloc[frame])
-    sns.heatmap(sig_matrix, annot=False, fmt=".2f", cmap="coolwarm",
-                cbar=True, linewidths=0.5, ax=ax, vmin=data_sample.min().min(), vmax=data_sample.max().max())
-    ax.set_title(f"Time Point {frame+1}")
+    im.set_data(sig_matrix)
+    ax.set_title(f"fNIRS Dynamic Heatmap - Time Point {frame+1}")
+    return [im]
 
 # 创建动画
-ani = FuncAnimation(fig, update, frames=len(data_sample), interval=50)  # interval 毫秒
+ani = FuncAnimation(fig, update, frames=len(data_sample), interval=50, blit=True)
 
-# 显示动画
 plt.show()
 
-# 如果想保存为 mp4 视频：
+# 保存视频（可选）
 # ani.save("fnirs_dynamic.mp4", writer="ffmpeg", fps=20)
